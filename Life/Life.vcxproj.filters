@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="creature_library">
+      <UniqueIdentifier>{906e2f07-a057-4763-b101-61b20d04b96b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\LifeApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StdAfx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\StdAfx.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="creature_library\acorn.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\beacon.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\binker.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\block.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\diehard.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\glider.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\infinite_1.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\infinite_2.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\infinite_3.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\pulsar.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\r_pentomino.life">
+      <Filter>creature_library</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="creature_library\toad.life">
+      <Filter>creature_library</Filter>
+    </Text>
+  </ItemGroup>
+</Project>
