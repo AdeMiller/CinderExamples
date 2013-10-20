@@ -18,6 +18,7 @@
 template <int MAX, typename T>
 inline T wrap_map(const T& x)
 {
+
     if (x < 0)
         return (MAX + x);
     if (x >= MAX)

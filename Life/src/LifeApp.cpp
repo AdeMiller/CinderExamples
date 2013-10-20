@@ -175,8 +175,8 @@ void LifeApp::update()
         const int btm = wrap_map<map_height>(y + 1);
         for (int x = 0; x < map_width; ++x)
         {
-            const size_t left = wrap_map<map_height>(x - 1);
-            const size_t right = wrap_map<map_height>(x + 1);
+            const size_t left = wrap_map<map_width>(x - 1);
+            const size_t right = wrap_map<map_width>(x + 1);
             const int neighbors = read_map[top][left] + read_map[top][x] + read_map[top][right]
                                 + read_map[y  ][left]                    + read_map[y  ][right]
                                 + read_map[btm][left] + read_map[btm][x] + read_map[btm][right];
