@@ -2,25 +2,29 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <BOOST_PATH>C:\Src\cinder_0.8.5_vc2012\boost</BOOST_PATH>
-    <CINDER_INC>C:\Src\cinder_0.8.5_vc2012\include</CINDER_INC>
-    <CINDER_LIB>C:\Src\cinder_0.8.5_vc2012\lib</CINDER_LIB>
+<!--
+    Pick up these from environment variables.
+
+    <BOOST_INC>C:\Src\Extern\cinder_0.8.5_vc2012\boost</BOOST_INC>
+    <CINDER_INC>C:\Src\Extern\cinder_0.8.5_vc2012\include</CINDER_INC>
+    <CINDER_LIB>C:\Src\Extern\cinder_0.8.5_vc2012\lib</CINDER_LIB>
+-->
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(IncludePath); $(BOOST_PATH); $(CINDER_INC); </IncludePath>
+    <IncludePath>$(IncludePath); $(BOOST_INC); $(CINDER_INC); </IncludePath>
     <LibraryPath>$(LibraryPath); $(CINDER_LIB); $(CINDER_LIB)\msw; </LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories); $(BOOST_PATH); $(CINDER_INC)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories); $(BOOST_INC); $(CINDER_INC)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(CINDER_LIB); $(CINDER_LIB)\msw; </AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <BuildMacro Include="BOOST_PATH">
-      <Value>$(BOOST_PATH)</Value>
+    <BuildMacro Include="BOOST_INC">
+      <Value>$(BOOST_INC)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="CINDER_INC">

@@ -8,7 +8,7 @@
 #include <ppl.h>
 
 // Boost filesystem
-#include <boost/filesystem.hpp>
+#include "boost/filesystem.hpp"
 
 // Cinder
 #include "cinder/app/AppNative.h"
