@@ -9,7 +9,7 @@ compatible version of the Boost library.
 
 Set the following environment variables to refer to the appropriate directories
 
-* CINDER_INC - CINDER include path, , cinder_0.8.5_vc2012/include
+* CINDER_INC - CINDER include path, cinder_0.8.5_vc2012/include
 * CINDER_LIB - CINDER library path, cinder_0.8.5_vc2012/lib
 * BOOST_INC - Boost include path, cinder_0.8.5_vc2012/boost
 
