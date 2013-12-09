@@ -44,9 +44,6 @@
     <None Include="creature_library\infinite_1.life">
       <Filter>creature_library</Filter>
     </None>
-    <None Include="creature_library\infinite_2.life">
-      <Filter>creature_library</Filter>
-    </None>
     <None Include="creature_library\infinite_3.life">
       <Filter>creature_library</Filter>
     </None>
@@ -54,6 +51,13 @@
       <Filter>creature_library</Filter>
     </None>
     <None Include="creature_library\r_pentomino.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="README.md" />
+    <None Include="creature_library\glider_gun.life">
+      <Filter>creature_library</Filter>
+    </None>
+    <None Include="creature_library\infinite_2.life">
       <Filter>creature_library</Filter>
     </None>
   </ItemGroup>

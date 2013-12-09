@@ -20,7 +20,7 @@ Running
 
 Move around the map using the mouse and left button to drag the center of the map view.
 
-Keys
+Keys:
 
 * s - Start/stop the simulation.
 * r - Reset the map. This will populate the map with randomly generated creatures from the creature library.
@@ -43,6 +43,7 @@ The following is an example, the infinite_1 creature:
     # #
 </pre>
 
-More examples of Life creatures can be [found on Wikipedia][1].
+More examples of Life creatures and an explanationn of how Conway's life simulation can 
+be [found on Wikipedia][1].
 
 [1]: http://en.wikipedia.org/wiki/Conway's_Game_of_Life "Wikipedia"

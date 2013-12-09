@@ -144,11 +144,13 @@
     <None Include="creature_library\block.life" />
     <None Include="creature_library\diehard.life" />
     <None Include="creature_library\glider.life" />
+    <None Include="creature_library\glider_gun.life" />
     <None Include="creature_library\infinite_1.life" />
     <None Include="creature_library\infinite_2.life" />
     <None Include="creature_library\infinite_3.life" />
     <None Include="creature_library\pulsar.life" />
     <None Include="creature_library\r_pentomino.life" />
+    <None Include="README.md" />
     <Text Include="creature_library\toad.life">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <FileType>Document</FileType>
