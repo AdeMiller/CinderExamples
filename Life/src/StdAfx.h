@@ -1,11 +1,13 @@
 // STL
 #include <array>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <vector>
 
 // Microsoft Parallel Patterns Library
 #include <ppl.h>
+#include <amp.h>
 
 // Boost filesystem
 #include "boost/filesystem.hpp"
@@ -16,9 +18,8 @@
 #include "cinder/Utilities.h"
 
 template <int MAX, typename T>
-inline T wrap_map(const T& x)
+inline T wrap_map(const T& x) restrict(amp, cpu)
 {
-
     if (x < 0)
         return (MAX + x);
     if (x >= MAX)
