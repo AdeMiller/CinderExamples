@@ -12,7 +12,7 @@ public:
     static const size_t map_height = 300;
     static const size_t map_width = 600;
 #else
-    static const size_t map_height = 1600;
+    static const size_t map_height = 6400;
     static const size_t map_width = 6400;
 #endif
 private:
@@ -89,7 +89,7 @@ public:
         update_func(bind(&LifeApp::update_cpu, this)),
         update_mode_name("CPU"),
         view_origin(0, 0),
-        view_size(400, 200),
+        view_size(300, 160),
         header_height(50),
         cell_size(4)
     {
@@ -168,11 +168,11 @@ void LifeApp::keyDown(KeyEvent event)
         break;
     case KeyEvent::KEY_1:                                       // CPU mode.
         update_func = bind(&LifeApp::update_cpu, this);
-        update_mode_name = "CPU";
+        update_mode_name = "CPU      ";
         break;
     case KeyEvent::KEY_2:                                       // AMP mode.
         update_func = bind(&LifeApp::update_amp, this);
-        update_mode_name = "AMP";
+        update_mode_name = "AMP      ";
         break;
     case KeyEvent::KEY_3:                                       // AMP Tiled mode.
         update_func = bind(&LifeApp::update_amp_tiled, this);
@@ -207,13 +207,18 @@ void LifeApp::update()
 // 3.Any live cell with more than three live neighbors dies, as if by overcrowding.
 // 4.Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
 
+int update_cell(const int value, const int neighbors) restrict(amp, cpu)
+{
+    //const int cell_mapper[2][9] = { { 0, 0, 0, 1, 0, 0, 0, 0, 0 }, { 0, 0, 1, 1, 0, 0, 0, 0, 0 } };
+    //return cell_mapper[value][neighbors];
+
+    if (value == 0)
+        return (neighbors == 3) ? 1 : 0;
+    return (neighbors == 2 || neighbors == 3) ? 1 : 0;
+}
+
 void LifeApp::update_cpu()
 {
-    const array<array<const int, 9>, 2> cell_mapper = { {
-            { { 0, 0, 0, 1, 0, 0, 0, 0, 0 } },
-            { { 0, 0, 1, 1, 0, 0, 0, 0, 0 } }
-            } };
-
     concurrency::parallel_for(0, int(map_height), [=](const int& y)
     {
         const int top = y - 1;
@@ -225,7 +230,7 @@ void LifeApp::update_cpu()
             const int neighbors = read_map(top, left) + read_map(top, x) + read_map(top, right)
                                 + read_map(y  , left)                    + read_map(y  , right)
                                 + read_map(btm, left) + read_map(btm, x) + read_map(btm, right);
-            map_cells[write_idx][y * map_width + x] = cell_mapper[read_map(y, x)][neighbors];
+            map_cells[write_idx][y * map_width + x] = update_cell(read_map(y, x), neighbors);
         }
     }, concurrency::affinity_partitioner());
 }
@@ -235,13 +240,12 @@ void LifeApp::update_amp()
     auto read_map_vw = *map_cells_vw[read_idx];
     auto write_map_vw = *map_cells_vw[write_idx];
     write_map_vw.discard_data();
-    auto compute_domain = concurrency::extent<2>(map_height, map_width);
 
+    auto compute_domain = concurrency::extent<2>(map_height, map_width);
     concurrency::parallel_for_each(compute_domain, [=](concurrency::index<2> idx) restrict(amp)
     {
         const int y = idx[0];
         const int x = idx[1];
-        int cell_mapper[2][8] = { { 0, 0, 0, 1, 0, 0, 0, 0 }, { 0, 0, 1, 1, 0, 0, 0, 0 } };
         const int top = wrap_map<map_height>(y - 1);
         const int btm = wrap_map<map_height>(y + 1);
         const int left = wrap_map<map_width>(x - 1);
@@ -249,46 +253,64 @@ void LifeApp::update_amp()
         const int neighbors = read_map_vw[top][left] + read_map_vw[top][x] + read_map_vw[top][right]
                             + read_map_vw[y][left]                         + read_map_vw[y][right]
                             + read_map_vw[btm][left] + read_map_vw[btm][x] + read_map_vw[btm][right];
-        write_map_vw[y][x] = cell_mapper[read_map_vw[y][x]][neighbors];
+        write_map_vw[y][x] = update_cell(read_map_vw[y][x], neighbors);
     });
     write_map_vw.synchronize();
 }
 
-int read_map_vw(const concurrency::array_view<int, 2>& map_vw, int y, int x) restrict(amp)
+int read(const concurrency::array_view<int, 2>& map_vw, const int y, const int x) restrict(amp)
 {
     return map_vw[wrap_map<LifeApp::map_height>(y)][wrap_map<LifeApp::map_width>(x)];
 }
 
 void LifeApp::update_amp_tiled()
 {
-    //auto read_map_vw = *map_cells_vw[read_idx];
-    //auto write_map_vw = *map_cells_vw[write_idx];
-    //write_map_vw.discard_data();
-    //auto compute_domain = concurrency::tiled_extent<16, 16>(concurrency::extent<2>(map_height, map_width)).pad();
+    static const int tile_size = 32;
 
-    //concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<16, 16> tidx) restrict(amp)
-    //{
-    //    tile_static int tile_data[18][18];
-    //    const int gy = wrap_map<map_height>(tidx.global[0]);
-    //    const int gx = wrap_map<map_height>(tidx.global[1]);
-    //    const int y = tidx.local[0];
-    //    const int x = tidx.local[1];
+    auto read_map_vw = *map_cells_vw[read_idx];
+    auto write_map_vw = *map_cells_vw[write_idx];
+    write_map_vw.discard_data();
 
-    //    tile_data[y+1][x+1] = read_map_vw[gy][gx];
-    //    //if (x == 0)
-    //    //    tile_data[y + 1][0] = 
-    //    tidx.barrier.wait();
-    //    int cell_mapper[2][8] = { { 0, 0, 0, 1, 0, 0, 0, 0 }, { 0, 0, 1, 1, 0, 0, 0, 0 } };
-    //    const int top = y - 1;
-    //    const int btm = y + 1;
-    //    const int left = x - 1;
-    //    const int right = x + 1;
-    //    const int neighbors = tile_data[top][left] + tile_data[top][x] + tile_data[top][right]
-    //        + tile_data[y][left] + tile_data[y][right]
-    //        + tile_data[btm][left] + tile_data[btm][x] + tile_data[btm][right];
-    //    write_map_vw[gy][gx] = cell_mapper[read_map_vw[y][x]][neighbors];
-    //});
-    //write_map_vw.synchronize();
+    auto compute_domain = concurrency::tiled_extent<tile_size, tile_size>(concurrency::extent<2>(map_height, map_width)).pad();
+    concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size, tile_size> tidx) restrict(amp)
+    {
+        const int y = wrap_map<map_height>(tidx.global[0]);
+        const int x = wrap_map<map_height>(tidx.global[1]);
+        const int ty = tidx.local[0] + 1;
+        const int tx = tidx.local[1] + 1;
+        const int top = ty - 1;
+        const int btm = ty + 1;
+        const int left = tx - 1;
+        const int right = tx + 1;
+
+        tile_static int tile_data[tile_size + 2][tile_size + 2];
+
+        tile_data[ty][tx] = read_map_vw[y][x];
+        if (tx == 1)                                                    // Left
+            tile_data[ty][left] = read(read_map_vw, y, x - 1);
+        if (tx == tile_size)                                            // Right
+            tile_data[ty][right] = read(read_map_vw, y, x + 1);
+        if (ty == 1)                                                    // Top
+            tile_data[top][tx] = read(read_map_vw, y - 1, x);
+        if (ty == tile_size)                                            // Bottom
+            tile_data[btm][tx] = read(read_map_vw, y + 1, x);
+        if (ty == 1 && tx == 1)                                         // Top-Left
+            tile_data[top][left] = read(read_map_vw, y - 1, x - 1);
+        if (ty == 1 && tx == tile_size)                                 // Top-Right
+            tile_data[top][right] = read(read_map_vw, y - 1, x + 1);    
+        if (ty == tile_size && tx == 1)                                 // Bottom-Left
+            tile_data[btm][left] = read(read_map_vw, y + 1, x - 1);
+        if (ty == tile_size && tx == tile_size)                         // Bottom-Right
+            tile_data[btm][right] = read(read_map_vw, y + 1, x + 1);
+
+        tidx.barrier.wait_with_tile_static_memory_fence();
+
+        const int neighbors = tile_data[top][left] + tile_data[top][tx] + tile_data[top][right]
+                            + tile_data[ty][left]                       + tile_data[ty][right]
+                            + tile_data[btm][left] + tile_data[btm][tx] + tile_data[btm][right];
+        write_map_vw[y][x] = update_cell(tile_data[ty][tx], neighbors);
+    });
+    write_map_vw.synchronize();
 }
 
 // Cinder: Draw UI
@@ -380,9 +402,9 @@ void LifeApp::populate_map(const path& app_path)
 void LifeApp::draw_header() const
 {
     stringstream buf;
-    buf << "Framerate: " << fixed << setprecision(1) << setw(5) << getAverageFps() << 
-           "       Generation: " << generation_count << 
-           "       " << update_mode_name << " " << (is_benchmarking ? "Benchmark" : "         ");
+    buf << "Framerate: " << fixed << setprecision(1) << setw(5) << getAverageFps() <<
+        "       Generation: " << generation_count <<
+        "       " << update_mode_name << " " << (is_benchmarking ? "Benchmark" : "         ");
     gl::drawString(buf.str(), Vec2f( 10.0f, 5.0f ), Color::white(), text_font );
     buf.str("");
     buf.clear(); 
