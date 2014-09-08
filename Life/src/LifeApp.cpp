@@ -29,7 +29,7 @@ private:
     
     function<void(void)> update_func;
 
-    Vec2i last_mouse_pos;       // int (x, y) 
+    Vec2i last_mouse_pos;       // int (x, y)
     Vec2i view_origin;
     Vec2i view_size;
     const int header_height;    // Pixels
@@ -263,6 +263,15 @@ int read(const concurrency::array_view<int, 2>& map_vw, const int y, const int x
     return map_vw[wrap_map<LifeApp::map_height>(y)][wrap_map<LifeApp::map_width>(x)];
 }
 
+template <typename T>
+using SumType = decltype(std::declval<T>() + std::declval<T>());
+
+template <typename T, typename Func>
+auto TestFunc(T t, Func f) -> SumType < decltype(f(t)) >
+{
+    return f(t) + f(t);
+}
+
 void LifeApp::update_amp_tiled()
 {
     static const int tile_size = 32;
@@ -270,45 +279,39 @@ void LifeApp::update_amp_tiled()
     auto read_map_vw = *map_cells_vw[read_idx];
     auto write_map_vw = *map_cells_vw[write_idx];
     write_map_vw.discard_data();
-
     auto compute_domain = concurrency::tiled_extent<tile_size, tile_size>(concurrency::extent<2>(map_height, map_width)).pad();
-    concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size, tile_size> tidx) restrict(amp)
+
+    concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<16, 16> tidx) restrict(amp)
     {
-        const int y = wrap_map<map_height>(tidx.global[0]);
-        const int x = wrap_map<map_height>(tidx.global[1]);
-        const int ty = tidx.local[0] + 1;
-        const int tx = tidx.local[1] + 1;
-        const int top = ty - 1;
-        const int btm = ty + 1;
-        const int left = tx - 1;
-        const int right = tx + 1;
-
         tile_static int tile_data[tile_size + 2][tile_size + 2];
+        const int gy = wrap_map<map_height>(tidx.global[0]);
+        const int gx = wrap_map<map_height>(tidx.global[1]);
+        const int y = tidx.local[0] + 1;
+        const int x = tidx.local[1] + 1;
 
-        tile_data[ty][tx] = read_map_vw[y][x];
-        if (tx == 1)                                                    // Left
-            tile_data[ty][left] = read(read_map_vw, y, x - 1);
-        if (tx == tile_size)                                            // Right
-            tile_data[ty][right] = read(read_map_vw, y, x + 1);
-        if (ty == 1)                                                    // Top
-            tile_data[top][tx] = read(read_map_vw, y - 1, x);
-        if (ty == tile_size)                                            // Bottom
-            tile_data[btm][tx] = read(read_map_vw, y + 1, x);
-        if (ty == 1 && tx == 1)                                         // Top-Left
-            tile_data[top][left] = read(read_map_vw, y - 1, x - 1);
-        if (ty == 1 && tx == tile_size)                                 // Top-Right
-            tile_data[top][right] = read(read_map_vw, y - 1, x + 1);    
-        if (ty == tile_size && tx == 1)                                 // Bottom-Left
-            tile_data[btm][left] = read(read_map_vw, y + 1, x - 1);
-        if (ty == tile_size && tx == tile_size)                         // Bottom-Right
-            tile_data[btm][right] = read(read_map_vw, y + 1, x + 1);
+        tile_data[y][x] = 0; read_map_vw[gy][gx];
+        if (x == 1)
+            tile_data[y][0] = 1; read_map_vw[gy][gx - 1];
+        if (x == tile_size)
+            tile_data[y][tile_size + 1] = 1;  read_map_vw[gy][gx + 1];
+        if (y == 1)
+            tile_data[0][x] = 1;  read_map_vw[gy - 1][gx];
+        if (y == tile_size)
+            tile_data[tile_size + 1][x] = 1;  read_map_vw[gy + 1][gx];
+        if ((x == 1) && (y == 1))
+            tile_data[0][0] = 1; read_map_vw[gy - 1][gx - 1];
 
         tidx.barrier.wait_with_tile_static_memory_fence();
 
-        const int neighbors = tile_data[top][left] + tile_data[top][tx] + tile_data[top][right]
-                            + tile_data[ty][left]                       + tile_data[ty][right]
-                            + tile_data[btm][left] + tile_data[btm][tx] + tile_data[btm][right];
-        write_map_vw[y][x] = update_cell(tile_data[ty][tx], neighbors);
+        int cell_mapper[2][8] = { { 0, 0, 0, 1, 0, 0, 0, 0 }, { 0, 0, 1, 1, 0, 0, 0, 0 } };
+        const int top = y - 1;
+        const int btm = y + 1;
+        const int left = x - 1;
+        const int right = x + 1;
+        const int neighbors = tile_data[top][left] + tile_data[top][x] + tile_data[top][right]
+                            + tile_data[y][left]                       + tile_data[y][right]
+                            + tile_data[btm][left] + tile_data[btm][x] + tile_data[btm][right];
+        write_map_vw[gy][gx] = cell_mapper[tile_data[y][x]][neighbors];
     });
     write_map_vw.synchronize();
 }
