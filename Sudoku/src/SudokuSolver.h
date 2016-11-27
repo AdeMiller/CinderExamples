@@ -1,9 +1,6 @@
-//
-// Created by ade on 11/17/16.
-//
 
-#ifndef SUDOKU_SOLVER_H
-#define SUDOKU_SOLVER_H
+#ifndef SUDOKU_SUDOKUSOLVER_H
+#define SUDOKU_SUDOKUSOLVER_H
 
 #include <numeric>
 #include <cctype>
@@ -139,4 +136,4 @@ public:
     }
 };
 
-#endif //SUDOKU_SOLVER_H
+#endif //SUDOKU_SUDOKUSOLVER_H

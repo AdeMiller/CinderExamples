@@ -1,9 +1,9 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
-#include "cinder/Utilities.h"
+//#include "cinder/Utilities.h"
 
-#include "Solver.h"
+#include "SudokuSolver.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -88,8 +88,8 @@ void SudokuApp::draw()
 
     for (auto x = 0; x <= 9; ++x)
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
-        for (auto y = 0; y <= 9; ++y)
-            gl::drawLine(board_offset + ivec2(0.0f, y * sqr_size), board_offset + ivec2(sqr_size * 9.0f, y * sqr_size));
+    for (auto y = 0; y <= 9; ++y)
+        gl::drawLine(board_offset + ivec2(0.0f, y * sqr_size), board_offset + ivec2(sqr_size * 9.0f, y * sqr_size));
 
     for (auto x = 0; x < 9; ++x) {
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
