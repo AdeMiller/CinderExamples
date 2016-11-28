@@ -1,7 +1,6 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
-//#include "cinder/Utilities.h"
 
 #include "SudokuSolver.h"
 
@@ -86,26 +85,28 @@ void SudokuApp::draw()
     auto blk_size = num_size * 3.0f;
     auto blk_mid = blk_size / 2.0f;
 
-    for (auto x = 0; x <= 9; ++x)
+    for (auto x = 0; x <= 9; ++x) {
+        gl::lineWidth(x % 3 == 0 ? 3.0f : 1.0f);
+        gl::color(ColorA::gray(x % 3 == 0 ? 1.0f : 0.5f));
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
-    for (auto y = 0; y <= 9; ++y)
-        gl::drawLine(board_offset + ivec2(0.0f, y * sqr_size), board_offset + ivec2(sqr_size * 9.0f, y * sqr_size));
+        gl::drawLine(board_offset + ivec2(0.0f, x * sqr_size), board_offset + ivec2(sqr_size * 9.0f, x * sqr_size));
+    }
 
-    for (auto x = 0; x < 9; ++x) {
+    for (auto r = 0; r < 9; ++r) {
         for (auto y = 0; y < 9; ++y) {
             gl::color(ColorA::black());
 
-            auto co = board_offset + ivec2(2 + x * sqr_size, 2 + y * sqr_size);
+            auto co = board_offset + ivec2(2 + r * sqr_size, 2 + y * sqr_size);
             gl::drawSolidRect(Rectf(co, co + ivec2(sqr_size - 4, sqr_size - 4)));
             gl::color(ColorA::white());
 
-            auto c = m_solver.get_cell(y, x);
+            auto c = m_solver.get_cell(y, r);
             stringstream buf;
-            if (m_solver.get_cell(y, x).get_value() == 0) {
-                auto cell_offset = board_offset + ivec2(sqr_size * x, sqr_size * y);
+            if (m_solver.get_cell(y, r).get_value() == 0) {
+                auto cell_offset = board_offset + ivec2(sqr_size * r, sqr_size * y);
                 unsigned short m = 0b1;
                 for (auto i = 0; i < 9; ++i) {
-                    if (c.mask & m) {
+                    if (c.values & m) {
                         buf.str("");
                         buf.clear();
                         buf << i + 1;
@@ -120,10 +121,10 @@ void SudokuApp::draw()
             }
             buf.str("");
             buf.clear();
-            auto v = m_solver.get_cell(y, x).get_value();
+            auto v = m_solver.get_cell(y, r).get_value();
             buf << v;
 
-            gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * x, blk_mid + sqr_size * y),
+            gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * r, blk_mid + sqr_size * y),
                                    c.is_locked() ? ColorA( 1, 1, 1 ) : (is_complete ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
                                    big_font);
         }
