@@ -92,7 +92,6 @@ void SudokuApp::draw()
         gl::drawLine(board_offset + ivec2(0.0f, y * sqr_size), board_offset + ivec2(sqr_size * 9.0f, y * sqr_size));
 
     for (auto x = 0; x < 9; ++x) {
-        gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
         for (auto y = 0; y < 9; ++y) {
             gl::color(ColorA::black());
 
@@ -100,31 +99,33 @@ void SudokuApp::draw()
             gl::drawSolidRect(Rectf(co, co + ivec2(sqr_size - 4, sqr_size - 4)));
             gl::color(ColorA::white());
 
-            auto c = m_solver.get_cell(x, y);
+            auto c = m_solver.get_cell(y, x);
             stringstream buf;
-            if (c.val == 0) {
+            if (m_solver.get_cell(y, x).get_value() == 0) {
                 auto cell_offset = board_offset + ivec2(sqr_size * x, sqr_size * y);
-                unsigned short m = 0b0000000000000001;
+                unsigned short m = 0b1;
                 for (auto i = 0; i < 9; ++i) {
                     if (c.mask & m) {
+                        buf.str("");
+                        buf.clear();
                         buf << i + 1;
                         gl::drawStringCentered(buf.str(),
                                                cell_offset +
                                                ivec2(num_mid + num_size * (i % 3), num_mid + num_size * (i / 3)),
                                                ColorA::white(), sml_font);
-                        buf.str("");
-                        buf.clear();
                     }
                     m <<= 1;
                 }
                 continue;
             }
-            buf << int(c.val);
-            gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * x, blk_mid + sqr_size * y),
-                                   c.locked ? ColorA( 1, 1, 1 ) : (is_complete ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
-                                   big_font);
             buf.str("");
             buf.clear();
+            auto v = m_solver.get_cell(y, x).get_value();
+            buf << v;
+
+            gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * x, blk_mid + sqr_size * y),
+                                   c.is_locked() ? ColorA( 1, 1, 1 ) : (is_complete ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
+                                   big_font);
         }
         is_dirty = false;
     }
