@@ -32,7 +32,7 @@ void prepareSettings(SudokuApp::Settings* settings)
 
 void SudokuApp::keyDown(KeyEvent event)
 {
-    is_dirty = m_solver.update();
+    is_dirty = m_solver.solve();
     if (!is_dirty) {
         is_finished = m_solver.is_correct();
         if (is_finished)
