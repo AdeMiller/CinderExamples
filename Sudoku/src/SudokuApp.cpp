@@ -22,7 +22,7 @@ private:
     Font big_font;
     Font sml_font;
     bool is_dirty;
-    bool is_complete;
+    bool is_finished;
 };
 
 void prepareSettings(SudokuApp::Settings* settings)
@@ -33,13 +33,16 @@ void prepareSettings(SudokuApp::Settings* settings)
 void SudokuApp::keyDown(KeyEvent event)
 {
     is_dirty = m_solver.update();
-    if (!is_dirty)
-        is_complete = m_solver.is_complete();
+    if (!is_dirty) {
+        is_finished = m_solver.is_correct();
+        if (is_finished)
+            is_dirty = true;
+    }
 }
-
 
 void SudokuApp::resize()
 {
+    gl::clear(ColorA::black());
     is_dirty = true;
 }
 
@@ -125,7 +128,7 @@ void SudokuApp::draw()
             buf << v;
 
             gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * r, blk_mid + sqr_size * y),
-                                   c.is_locked() ? ColorA( 1, 1, 1 ) : (is_complete ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
+                                   c.is_locked() ? ColorA( 1, 1, 1 ) : (is_finished ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
                                    big_font);
         }
         is_dirty = false;

@@ -10,22 +10,22 @@ using namespace ::std;
 
 struct cell {
 
-public:
     static const unsigned short value_mask = 0b0000000111111111;
 
     unsigned short values;
 
-    cell() : values(0b0000000111111111) {}
+    cell() : values(value_mask) {}
 
     cell(unsigned char v) : values(value_mask & (0b0000001000000000 >> (10 - v)) | locked_mask) {}
 
     inline bool is_locked() const { return values & locked_mask; }
 
-    inline bool has_value() const { return  __builtin_popcount(values & value_mask) == 1; }
+    inline bool has_value() const { return __builtin_popcount(values & value_mask) == 1; }
 
     inline int get_value() const { return has_value() ? ffs(values & value_mask) : 0; }
 
 private:
+
     static const unsigned short locked_mask = 0b0000001000000000;
 };
 
@@ -98,13 +98,13 @@ public:
             auto m = 0b0;
             for (const auto i: g)
             {
-                if (board[i].has_value())                       // Add known values to masks
+                if (board[i].has_value())                               // Add known values to masks
                     m |= board[i].values;
                 else
-                    values_counts[board[i].values]++;           // Count populations of masks
+                    values_counts[board[i].values]++;                   // Count populations of masks
             }
 
-            for (const auto i: g)                                     // Remove known values from group
+            for (const auto i: g)                                       // Remove known values from group
                 if (!board[i].has_value()) {
                     board[i].values &= ~m;
                     changed = true;
@@ -122,19 +122,16 @@ public:
         return changed;
     }
 
-    bool is_complete() const
-    {
-        return all_of(cbegin(board), cend(board), [](const cell c) { return c.has_value(); }) && is_correct();
-    }
-
     bool is_correct() const
     {
         return all_of(cbegin(group_offsets), cend(group_offsets), [this](const array<char, 9> g) { return is_correct(g); });
     }
 
+private:
     bool is_correct(const array<char, 9>& group) const
     {
-        return accumulate(cbegin(group), cend(group), 0b0, [this](const unsigned short v, const char i) { return v | (board[i].has_value() ? board[i].values : 0); }) == cell::value_mask;
+        auto r = accumulate(cbegin(group), cend(group), 0b0, [this](const unsigned short v, const char i) { return v | (board[i].has_value() ? board[i].values : 0); });
+        return r & cell::value_mask == cell::value_mask;
     }
 };
 
