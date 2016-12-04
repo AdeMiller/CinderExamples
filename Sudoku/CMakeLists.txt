@@ -10,6 +10,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 include( "${CINDER_PATH}/proj/cmake/modules/cinderMakeApp.cmake" )
 
 ci_make_app(
-        SOURCES     ${APP_PATH}/SudokuApp.cpp
+        SOURCES     ${APP_PATH}/SudokuApp.cpp ${APP_PATH}/SudokuSolver.cpp
         CINDER_PATH ${CINDER_PATH}
 )

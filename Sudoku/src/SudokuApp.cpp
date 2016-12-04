@@ -7,36 +7,75 @@
 using namespace ci;
 using namespace ci::app;
 
+using namespace Sudoku;
+
 class SudokuApp : public App {
 
 public:
-    void setup() override;
+    SudokuApp(): board_offset(50.0f, 50.0f),
+                 sqr_size(90.0f),
+                 num_size(sqr_size / 3.0f),
+                 num_mid(num_size / 2.0f),
+                 blk_size(num_size * 3.0f),
+                 blk_mid(blk_size / 2.0f),
+                 big_font("Courier New", 42.0f),
+                 sml_font("Courier New", 16.0f),
 
+                 solver(),
+                 puzzles(),
+                 puzzle(0),
+                 is_dirty(false)
+    {}
+
+    void setup() override;
     void keyDown(KeyEvent event) override;
     void resize() override;
     void draw() override;
-    void update() override;
 
 private:
-    SudokuSolver m_solver;
-    Font big_font;
-    Font sml_font;
+    const ivec2 board_offset;
+    const float sqr_size;
+    const Font big_font;
+    const Font sml_font;
+    const float num_size;
+    const float num_mid;
+    const float blk_size;
+    const float blk_mid;
+
+    SudokuSolver solver;
+    vector<string> puzzles;
+    int puzzle;
     bool is_dirty;
-    bool is_finished;
+
+    void draw_board();
+    void draw_cell(const int row, const int col) const;
+    void draw_value(const int row, const int col, const Cell &cell) const;
+    void draw_values(const int row, const int col, const Cell &cell) const;
 };
 
 void prepareSettings(SudokuApp::Settings* settings)
 {
-    settings->setMultiTouchEnabled( false );
+    settings->setMultiTouchEnabled(false);
 }
 
 void SudokuApp::keyDown(KeyEvent event)
 {
-    is_dirty = m_solver.solve();
-    if (!is_dirty) {
-        is_finished = m_solver.is_correct();
-        if (is_finished)
-            is_dirty = true;
+
+    switch(event.getCode())
+    {
+        case KeyEvent::KEY_SPACE:                                   // Next move.
+            is_dirty = solver.solve() | solver.is_correct();
+            break;
+        case KeyEvent::KEY_n:                                       // Next puzzle.
+            if (puzzle < puzzles.size())
+                is_dirty = solver.load_sdm(puzzles[++puzzle]);
+            break;
+        case KeyEvent::KEY_q:                                       // Quit.
+            quit();
+            break;
+        case KeyEvent::KEY_r:                                       // Reset.
+            is_dirty = solver.load_sdm(puzzles[puzzle]);
+            break;
     }
 }
 
@@ -48,30 +87,25 @@ void SudokuApp::resize()
 
 void SudokuApp::setup()
 {
-    big_font = Font( "Courier New", 42.0f );
-    sml_font = Font( "Courier New", 16.0f );
-    setWindowSize(100 + 90 * 9, 100 + 90 * 9);
+    setWindowSize(board_offset.x * 2 + sqr_size * 9, board_offset.y * 2 + sqr_size * 9);
 
     gl::clear(ColorA::black());
 
-    // NO m_solver.load_sdm("016400000200009000400000062070230100100000003003087040960000005000800007000006820");
-    m_solver.load_sdm("........74.6..7.....71285.6..3.71.5.8.......3.1.84.2..6.89327.....4..9.51........");
-    //m_solver.load_sdm("964.........6..1......7.5...8.9.3...25......63...4...7.....4.....25...4.6..8....3");
-    //m_solver.load_sdm("9672415832.......64.......98.......57958321641.......26.......75.......1321756498");
-    //m_solver.load_sdm("97.....5.6..5.8.3....6..748...3...2..6.....9..1...9...187..5....3.2.7..4.2.....73");
-    //m_solver.load_sdm("97....4.8...1....5....54.....98....414.....763....19.....67....4....9...7.6....91");
-    //m_solver.load_sdm("97...483..5..8......631...........2.7..925..8.4...........672......4..9..351...76");
-    //m_solver.load_sdm("97...6.....4..8...1.2...6..3...9...5428...31.7...3...6..6...7.1...2..4.....1...58");
-    //m_solver.load_sdm("97...6.5...67..21.....5...668......7..5...9..7......414...7.....37..26...2.5...73");
-    //m_solver.load_sdm("97..581.....9...2..2...6.5.7...82.6.....7.....1.39...2.4.8...1..5...3.....156..79");
-    //m_solver.load_sdm("97.1..4.2...7...9.......761....6.1...85...94...7.9....893.......1...5...7.4..9.36");
-
+    puzzles = {
+            "97...6.5...67..21.....5...668......7..5...9..7......414...7.....37..26...2.5...73",
+            ".164.....2....9...4......62.7.23.1..1.......3..3.87.4.96......5...8....7.....682.",
+            "........74.6..7.....71285.6..3.71.5.8.......3.1.84.2..6.89327.....4..9.51........",
+            "964.........6..1......7.5...8.9.3...25......63...4...7.....4.....25...4.6..8....3",
+            "9672415832.......64.......98.......57958321641.......26.......75.......1321756498",
+            "97.....5.6..5.8.3....6..748...3...2..6.....9..1...9...187..5....3.2.7..4.2.....73",
+            "97....4.8...1....5....54.....98....414.....763....19.....67....4....9...7.6....91",
+            "97...483..5..8......631...........2.7..925..8.4...........672......4..9..351...76",
+            "97...6.....4..8...1.2...6..3...9...5428...31.7...3...6..6...7.1...2..4.....1...58",
+            "97..581.....9...2..2...6.5.7...82.6.....7.....1.39...2.4.8...1..5...3.....156..79",
+            "97.1..4.2...7...9.......761....6.1...85...94...7.9....893.......1...5...7.4..9.36"
+    };
+    solver.load_sdm(puzzles[puzzle]);
     is_dirty = true;
-}
-
-void SudokuApp::update()
-{
-    //is_dirty = m_solver.update();
 }
 
 void SudokuApp::draw()
@@ -79,60 +113,56 @@ void SudokuApp::draw()
     if (!is_dirty)
         return;
 
-    auto board_offset = ivec2(50.0f, 50.0f);
-    auto sqr_size = 90.0f;
+    gl::clear(ColorA::black());
+    draw_board();
 
-    auto num_size = sqr_size / 3.0f;
-    auto num_mid = num_size / 2.0f;
+    for (auto r = 0; r < 9; ++r) {
+        for (auto c = 0; c < 9; ++c)
+            draw_cell(r, c);
+    }
+    is_dirty = false;
+}
 
-    auto blk_size = num_size * 3.0f;
-    auto blk_mid = blk_size / 2.0f;
-
+void SudokuApp::draw_board()
+{
     for (auto x = 0; x <= 9; ++x) {
         gl::lineWidth(x % 3 == 0 ? 3.0f : 1.0f);
         gl::color(ColorA::gray(x % 3 == 0 ? 1.0f : 0.5f));
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
         gl::drawLine(board_offset + ivec2(0.0f, x * sqr_size), board_offset + ivec2(sqr_size * 9.0f, x * sqr_size));
     }
+}
 
-    for (auto r = 0; r < 9; ++r) {
-        for (auto y = 0; y < 9; ++y) {
-            gl::color(ColorA::black());
+void SudokuApp::draw_cell(const int row, const int col) const
+{
+    auto cell = solver.get_cell(row, col);
+    cell_value(cell) ? draw_value(row, col, cell) : draw_values(row, col, cell);
 
-            auto co = board_offset + ivec2(2 + r * sqr_size, 2 + y * sqr_size);
-            gl::drawSolidRect(Rectf(co, co + ivec2(sqr_size - 4, sqr_size - 4)));
-            gl::color(ColorA::white());
+};
 
-            auto c = m_solver.get_cell(y, r);
-            stringstream buf;
-            if (m_solver.get_cell(y, r).get_value() == 0) {
-                auto cell_offset = board_offset + ivec2(sqr_size * r, sqr_size * y);
-                unsigned short m = 0b1;
-                for (auto i = 0; i < 9; ++i) {
-                    if (c.values & m) {
-                        buf.str("");
-                        buf.clear();
-                        buf << i + 1;
-                        gl::drawStringCentered(buf.str(),
-                                               cell_offset +
-                                               ivec2(num_mid + num_size * (i % 3), num_mid + num_size * (i / 3)),
-                                               ColorA::white(), sml_font);
-                    }
-                    m <<= 1;
-                }
-                continue;
-            }
-            buf.str("");
-            buf.clear();
-            auto v = m_solver.get_cell(y, r).get_value();
-            buf << v;
+void SudokuApp::draw_value(const int row, const int col, const Cell &cell) const
+{
+    ColorA color(1, 0, 0);
+    if (cell_locked(cell))
+        color = ColorA(1, 1, 1);
+    else if (solver.is_correct())
+        color = ColorA(0, 1, 0);
+    else if (cell_guess(cell))
+        color = ColorA(1, 1, 0);
+    gl::drawStringCentered(to_string(cell_value(cell)),
+                           board_offset + ivec2(blk_mid + sqr_size * col, blk_mid + sqr_size * row),
+                           color, big_font);
+}
 
-            gl::drawStringCentered(buf.str(), board_offset + ivec2(blk_mid + sqr_size * r, blk_mid + sqr_size * y),
-                                   c.is_locked() ? ColorA( 1, 1, 1 ) : (is_finished ? ColorA( 0, 1, 0 ) : ColorA( 1, 0, 0 )),
-                                   big_font);
-        }
-        is_dirty = false;
+void SudokuApp::draw_values(const int row, const int col, const Cell& cell) const
+{
+    auto offset = board_offset + ivec2(num_mid + sqr_size * col, num_mid + sqr_size * row);
+    for (auto i = 0; i < 9; ++i) {
+        if (cell & (0b1 << i))
+            gl::drawStringCentered(to_string(i + 1),
+                                   offset + ivec2(num_size * (i % 3), num_size * (i / 3)),
+                                   ColorA::white(), sml_font);
     }
 }
 
-CINDER_APP( SudokuApp, RendererGl, prepareSettings )
+CINDER_APP(SudokuApp, RendererGl, prepareSettings)
