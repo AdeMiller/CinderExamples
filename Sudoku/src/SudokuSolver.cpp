@@ -4,8 +4,17 @@
 namespace Sudoku
 {
     int cell_value(Cell c) { return (__builtin_popcount(c & value_mask) == 1) ? __builtin_ffs(c & value_mask) : 0; }
+
     bool cell_guess(Cell c) { return c & guess_mask; }
+
     bool cell_locked(Cell c) { return c & locked_mask; }
+
+    bool cell_certainty(const Cell &i, const Cell &j)
+    {
+        auto vi = __builtin_popcount(i & value_mask);
+        auto vj = __builtin_popcount(j & value_mask);
+        return (vi > 1 ? vi : 10) < (vj > 1 ? vj : 10);
+    }
 
     const array<Group, 27> SudokuSolver::group_offsets = array<Group, 27>({
         Group({  0,  1,  2,  3,  4,  5,  6,  7,  8 }), Group({  9, 10, 11, 12, 13, 14, 15, 16, 17 }),
