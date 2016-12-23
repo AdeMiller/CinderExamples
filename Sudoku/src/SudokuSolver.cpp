@@ -5,15 +5,32 @@ namespace Sudoku
 {
     int cell_value(Cell c) { return (__builtin_popcount(c & value_mask) == 1) ? __builtin_ffs(c & value_mask) : 0; }
 
-    bool cell_guess(Cell c) { return c & guess_mask; }
-
-    bool cell_locked(Cell c) { return c & locked_mask; }
-
     bool cell_certainty(const Cell &i, const Cell &j)
     {
         auto vi = __builtin_popcount(i & value_mask);
         auto vj = __builtin_popcount(j & value_mask);
         return (vi > 1 ? vi : 10) < (vj > 1 ? vj : 10);
+    }
+
+    ostream& operator<<(ostream& os, const CellStrm& c)
+    {
+        Cell v = c.v & value_mask;
+        if (__builtin_popcount(v) == 1) {
+            os << __builtin_ffs(v);
+            return os;
+        }
+        os << "[ ";
+        for (auto m = 0b1; m < 512; m <<= 1)
+            if (v & m)
+                os << __builtin_ffs(m) << ", ";
+        os << "]";
+        return os;
+    }
+
+    ostream& operator<<(ostream& os, const Group& g)
+    {
+        os << "[ " << setw(2) << int(g[0]) << " .. " << int(g[8]) << " ]";
+        return os;
     }
 
     const array<Group, 27> SudokuSolver::group_offsets = array<Group, 27>({

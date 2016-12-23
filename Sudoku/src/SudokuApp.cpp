@@ -60,11 +60,10 @@ void prepareSettings(SudokuApp::Settings* settings)
 
 void SudokuApp::keyDown(KeyEvent event)
 {
-
     switch(event.getCode())
     {
         case KeyEvent::KEY_SPACE:                                   // Next move.
-            is_dirty = solver.solve() | solver.is_correct();
+            is_dirty = solver.solve() | solver.is_finished();
             break;
         case KeyEvent::KEY_n:                                       // Next puzzle.
             if (puzzle < puzzles.size())
@@ -73,7 +72,7 @@ void SudokuApp::keyDown(KeyEvent event)
         case KeyEvent::KEY_q:                                       // Quit.
             quit();
             break;
-        case KeyEvent::KEY_r:                                       // Reset.
+        case KeyEvent::KEY_r:                                       // Reset current puzzle.
             is_dirty = solver.load_sdm(puzzles[puzzle]);
             break;
     }
@@ -137,18 +136,28 @@ void SudokuApp::draw_cell(const int row, const int col) const
 {
     auto cell = solver.get_cell(row, col);
     cell_value(cell) ? draw_value(row, col, cell) : draw_values(row, col, cell);
-
-};
+}
 
 void SudokuApp::draw_value(const int row, const int col, const Cell &cell) const
 {
-    ColorA color(1, 0, 0);
-    if (cell_locked(cell))
-        color = ColorA(1, 1, 1);
-    else if (solver.is_correct())
-        color = ColorA(0, 1, 0);
-    else if (cell_guess(cell))
-        color = ColorA(1, 1, 0);
+    ColorA color(1, 1, 1);          // Default - White
+
+    switch(cell & 0b0000111000000000)
+    {
+        case 0b0000001000000000:    // Cell is locked, set by original puzzle - Green
+        case 0b0000011000000000:
+            color = ColorA(0, 1, 0);
+            break;
+        case 0b0000010000000000:    // Cell is a guess - Yellow
+            color = ColorA(1, 1, 0);
+            break;
+        case 0b0000100000000000:    // Cell is part of incorrect group - Red
+        case 0b0000101000000000:
+        case 0b0000111000000000:
+            color = ColorA(1, 0, 0);
+            break;
+    }
+
     gl::drawStringCentered(to_string(cell_value(cell)),
                            board_offset + ivec2(blk_mid + sqr_size * col, blk_mid + sqr_size * row),
                            color, big_font);

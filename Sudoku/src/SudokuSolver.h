@@ -24,11 +24,21 @@ namespace Sudoku
     static const unsigned short value_mask =  0b0000000111111111;
     static const unsigned short locked_mask = 0b0000001000000000;
     static const unsigned short guess_mask =  0b0000010000000000;
+    static const unsigned short bad_mask =    0b0000100000000000;
 
     int cell_value(Cell c);
-    bool cell_guess(Cell c);
-    bool cell_locked(Cell c);
+
     bool cell_certainty(const Cell &i, const Cell &j);
+
+    struct CellStrm {
+        Cell v;
+
+        CellStrm(Cell c): v(c) {}
+    };
+
+    ostream& operator<<(ostream& os, const CellStrm& c);
+
+    ostream& operator<<(ostream& os, const Group& g);
 
     class SudokuSolver
     {
@@ -57,35 +67,52 @@ namespace Sudoku
             return true;
         }
 
-        inline bool is_correct() const
+        inline bool is_finished() const
         {
-            return all_of(cbegin(group_offsets), cend(group_offsets), [this](const Group &g) { return is_group_correct(g); });
+            return is_complete() && is_groups_correct();
         }
 
         bool solve()
         {
+            if (is_finished()) {
+                cout << "FINISHED !!" << endl;
+                return false;
+            }
+
             cout << "Move " << setw(2) << ++move_count <<
-                    " on board " << setw(2) << boards.size() <<
-                    " =================================================" << endl;
+                " on board " << setw(2) << boards.size() <<
+                " =================================================" << endl;
+
+            if (!is_groups_correct() and boards.size() > 1) {
+                cout << "BAD GUESS. Unrolling." << endl;
+                boards.pop();
+                return true;
+            }
+
+            // Use the basic solver to remove possibilities based on existing values. If this results in
+            // changes then consider the move over.
 
             bool changed = false;
             for (const auto &g: SudokuSolver::group_offsets)
                 changed |= solve_group(g);
 
-            if (changed)
-                return true;
+            // If changed look for incorrect groups and mark their cells.
 
-            if (is_correct()) {
-                move_count--;
-                cout << "FINISHED !!" << endl;
-                return false;
+            if (changed) {
+                for (const auto &g: SudokuSolver::group_offsets)
+                    if (!is_group_correct(g)) {
+                        cout << "Group " << g << " incorrect" << endl;
+                        for (const auto i: g)
+                            boards.top()[i] |= bad_mask;
+                    }
+                return true;
             }
-            // TODO: If the board is incorrect and this is a guess we can unwind here, rather than waiting for a complete board.
 
             if (!is_complete()) {
                 make_guesses();
                 return true;
             }
+
             cout << "BAD GUESS. Unrolling." << endl;
             boards.pop();
             return true;
@@ -101,11 +128,11 @@ namespace Sudoku
                 if (current_board[i] & m) {
                     boards.push(current_board);
                     boards.top()[i] = m | guess_mask;
-                    cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << to_string(current_board[i]) << " => " << to_string(m) << " <------------ GUESS" << endl;
+                    cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << CellStrm(current_board[i]) << " => " << CellStrm(m) << " <------------ GUESS" << endl;
                 }
         }
 
-        int find_guess_candidate()
+        int find_guess_candidate() const
         {
             // TODO: Look at finding a better approach to making a guess
             return distance(cbegin(boards.top()), min_element(cbegin(boards.top()), cend(boards.top()), cell_certainty));
@@ -127,43 +154,31 @@ namespace Sudoku
                 if (__builtin_popcount(c.first) == c.second)
                     for (const auto i: g)
                         if (__builtin_popcount(boards.top()[i] & value_mask) != 1 && boards.top()[i] != c.first && boards.top()[i] & c.first) {
-                            cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << to_string(boards.top()[i]);
+                            cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << CellStrm(boards.top()[i]);
                             boards.top()[i] &= ~c.first;
-                            cout << " => " << to_string(boards.top()[i]) << endl;
+                            cout << " => " << CellStrm(boards.top()[i]) << endl;
                             changed = true;
                         }
             return changed;
         }
 
-        bool is_complete() const { return all_of(cbegin(boards.top()), cend(boards.top()), [this](const Cell &c) { return cell_value(c); }); }
+        // The board is complete when all cells have a value.
+
+        inline bool is_complete() const { return all_of(cbegin(boards.top()), cend(boards.top()), [this](const Cell &c) { return cell_value(c); }); }
+
+        inline bool is_groups_correct() const
+        {
+            return all_of(cbegin(group_offsets), cend(group_offsets), [this](const Group &g) { return is_group_correct(g); });
+        }
 
         bool is_group_correct(const Group &group) const
         {
-            // A group is correct if all the cells have a unique value and they are all themselves unique.
+            // A group is correct if all the cells that have a value are themselves unique.
 
-            auto r = accumulate(cbegin(group), cend(group), 0b0, [this](const unsigned short v, const char i) {
-                auto c = boards.top()[i] & value_mask;
-                return v | ((__builtin_popcount(c) == 1) ? c : 0);
-            });
-            return r == value_mask;
-        }
-
-        string to_string(Cell c) const
-        {
-            stringstream buf;
-            c &= value_mask;
-            if (__builtin_popcount(c) == 1) {
-                buf << __builtin_ffs(c);
-                return buf.str();
-            }
-            buf << "[ ";
-            for (auto m = 0b1; m < 512; m <<= 1)
-                if (c & m)
-                    buf << __builtin_ffs(m) << ", ";
-            buf << " ]";
-            auto s = buf.str();
-            s.erase(s.end() - 3);
-            return s;
+            array<int, 10> counts = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            for (const auto i: group)
+                counts[cell_value(boards.top()[i])]++;
+            return none_of(cbegin(counts) + 1, cend(counts), [] (const int& v) { return v > 1; });
         }
     };
 };
