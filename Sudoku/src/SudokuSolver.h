@@ -28,8 +28,6 @@ namespace Sudoku
 
     int cell_value(Cell c);
 
-    bool cell_certainty(const Cell &i, const Cell &j);
-
     struct CellStrm {
         Cell v;
 
@@ -54,6 +52,7 @@ namespace Sudoku
 
         bool load_sdm(const string &data)
         {
+            cout << "Loading =============================================================" << endl << data << endl;
             if (data.length() != 81)
                 return false;
 
@@ -134,8 +133,19 @@ namespace Sudoku
 
         int find_guess_candidate() const
         {
-            // TODO: Look at finding a better approach to making a guess
-            return distance(cbegin(boards.top()), min_element(cbegin(boards.top()), cend(boards.top()), cell_certainty));
+            // Get group with the lowest number of possible values.
+
+            array<int, 27> group_certainties;
+            transform(cbegin(SudokuSolver::group_offsets), cend(SudokuSolver::group_offsets), begin(group_certainties), [this](const Group& g) {
+                int p = accumulate(cbegin(g), cend(g), 0, [this](int p, const char& i) { return p + __builtin_popcount(boards.top()[i] & value_mask); });
+                return  (p != 9) ? p : 82;
+            });
+            auto i = distance(cbegin(group_certainties), min_element(cbegin(group_certainties), cend(group_certainties), less<int>()));
+            cout << "Group " << SudokuSolver::group_offsets[i] << endl;
+
+            // Find the cell with the lowest number of possible vales within the group.
+
+            return *min_element(cbegin(SudokuSolver::group_offsets[i]), cend(SudokuSolver::group_offsets[i]), [this](const char& i, const char& j) { return cell_certainty(i, j); });
         }
 
         bool solve_group(const Group &g)
@@ -179,6 +189,13 @@ namespace Sudoku
             for (const auto i: group)
                 counts[cell_value(boards.top()[i])]++;
             return none_of(cbegin(counts) + 1, cend(counts), [] (const int& v) { return v > 1; });
+        }
+
+        bool cell_certainty(const char &i, const char &j) const
+        {
+            auto vi = __builtin_popcount(boards.top()[i] & value_mask);
+            auto vj = __builtin_popcount(boards.top()[j] & value_mask);
+            return (vi > 1 ? vi : 10) < (vj > 1 ? vj : 10);
         }
     };
 };

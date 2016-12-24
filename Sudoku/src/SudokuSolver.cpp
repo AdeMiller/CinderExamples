@@ -5,13 +5,6 @@ namespace Sudoku
 {
     int cell_value(Cell c) { return (__builtin_popcount(c & value_mask) == 1) ? __builtin_ffs(c & value_mask) : 0; }
 
-    bool cell_certainty(const Cell &i, const Cell &j)
-    {
-        auto vi = __builtin_popcount(i & value_mask);
-        auto vj = __builtin_popcount(j & value_mask);
-        return (vi > 1 ? vi : 10) < (vj > 1 ? vj : 10);
-    }
-
     ostream& operator<<(ostream& os, const CellStrm& c)
     {
         Cell v = c.v & value_mask;
@@ -29,7 +22,7 @@ namespace Sudoku
 
     ostream& operator<<(ostream& os, const Group& g)
     {
-        os << "[ " << setw(2) << int(g[0]) << " .. " << int(g[8]) << " ]";
+        os << "[ " << setw(2) << int(g[0]) << " .. " << setw(2) << int(g[8]) << " ]";
         return os;
     }
 
