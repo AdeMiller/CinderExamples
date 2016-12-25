@@ -30,14 +30,22 @@ namespace Sudoku
 
     struct CellStrm {
         Cell v;
-
         CellStrm(Cell c): v(c) {}
+    };
+
+    struct CoordStrm {
+        int v;
+        CoordStrm(int i): v(i) {}
     };
 
     ostream& operator<<(ostream& os, const CellStrm& c);
 
+    ostream& operator<<(ostream& os, const CoordStrm& i);
+
     ostream& operator<<(ostream& os, const Group& g);
 
+    ostream& operator<<(ostream& os, const Board& b);
+    
     class SudokuSolver
     {
     private:
@@ -53,28 +61,37 @@ namespace Sudoku
         bool load_sdm(const string &data)
         {
             cout << "Loading =============================================================" << endl << data << endl;
-            if (data.length() != 81)
-                return false;
-
-            Board board;
-            transform(cbegin(data), cend(data), begin(board), [this](const char c) {
-                auto v = atoi(&c);
-                return v == 0 ? value_mask : (0b1 << (v - 1) | locked_mask);
-            });
-            boards = stack<Board>({board});
             move_count = 0;
+            Board board;
+            boards = stack<Board>({ board });
+
+            if (data.length() != 81) {
+                cout << "ERROR: Expected 81 characters but loaded " << data.length() << "." << endl;
+                fill(begin(boards.top()), end(boards.top()), (1 | locked_mask | bad_mask));
+                return false;    
+            }
+    
+            transform(cbegin(data), cend(data), begin(boards.top()), [this](const char c) {
+                auto v = atoi(&c);
+                return (v == 0) ? value_mask : (0b1 << (v - 1) | locked_mask);
+            });
+            cout << boards.top() << endl;
             return true;
         }
 
-        inline bool is_finished() const
-        {
-            return is_complete() && is_groups_correct();
-        }
+        inline bool is_finished() const { return is_complete() && is_groups_correct(); }
 
         bool solve()
         {
-            if (is_finished()) {
+            if (is_finished() || boards.empty()) {
                 cout << "FINISHED !!" << endl;
+                return false;
+            }
+
+            bool is_correct = is_groups_correct();
+
+            if (!is_correct && (boards.size() <= 1)) {
+                cout << "UNSOLVABLE BOARD!" << endl;
                 return false;
             }
 
@@ -82,7 +99,9 @@ namespace Sudoku
                 " on board " << setw(2) << boards.size() <<
                 " =================================================" << endl;
 
-            if (!is_groups_correct() and boards.size() > 1) {
+            // If groups are not correct then try another guess. If no guesses then this board is unsolvable.
+
+            if (!is_correct) {
                 cout << "BAD GUESS. Unrolling." << endl;
                 boards.pop();
                 return true;
@@ -91,14 +110,12 @@ namespace Sudoku
             // Use the basic solver to remove possibilities based on existing values. If this results in
             // changes then consider the move over.
 
-            bool changed = false;
-            for (const auto &g: SudokuSolver::group_offsets)
-                changed |= solve_group(g);
+            bool changed = solve_groups();
 
             // If changed look for incorrect groups and mark their cells.
 
             if (changed) {
-                for (const auto &g: SudokuSolver::group_offsets)
+                for (const auto &g: group_offsets)
                     if (!is_group_correct(g)) {
                         cout << "Group " << g << " incorrect" << endl;
                         for (const auto i: g)
@@ -112,7 +129,7 @@ namespace Sudoku
                 return true;
             }
 
-            cout << "BAD GUESS. Unrolling." << endl;
+            cout << "VERY BAD GUESS. Unrolling." << endl;
             boards.pop();
             return true;
         }
@@ -120,32 +137,38 @@ namespace Sudoku
     private:
         bool make_guesses()
         {
-            auto i = find_guess_candidate();
+            auto i = find_guess_cell();
             auto current_board = boards.top();
             boards.pop();
+            
             for (auto m = 0b1; m < 512; m <<= 1)
                 if (current_board[i] & m) {
                     boards.push(current_board);
                     boards.top()[i] = m | guess_mask;
-                    cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << CellStrm(current_board[i]) << " => " << CellStrm(m) << " <------------ GUESS" << endl;
+                    cout << CoordStrm(i) << ": " << CellStrm(current_board[i]) << " => " << CellStrm(m) << " <----- GUESS" << endl;
                 }
         }
 
-        int find_guess_candidate() const
+        int find_guess_cell() const
         {
             // Get group with the lowest number of possible values.
 
             array<int, 27> group_certainties;
-            transform(cbegin(SudokuSolver::group_offsets), cend(SudokuSolver::group_offsets), begin(group_certainties), [this](const Group& g) {
+            transform(cbegin(group_offsets), cend(group_offsets), begin(group_certainties), [this](const Group& g) {
                 int p = accumulate(cbegin(g), cend(g), 0, [this](int p, const char& i) { return p + __builtin_popcount(boards.top()[i] & value_mask); });
                 return  (p != 9) ? p : 82;
             });
             auto i = distance(cbegin(group_certainties), min_element(cbegin(group_certainties), cend(group_certainties), less<int>()));
-            cout << "Group " << SudokuSolver::group_offsets[i] << endl;
+            cout << "Group " << group_offsets[i] << endl;
 
             // Find the cell with the lowest number of possible vales within the group.
 
-            return *min_element(cbegin(SudokuSolver::group_offsets[i]), cend(SudokuSolver::group_offsets[i]), [this](const char& i, const char& j) { return cell_certainty(i, j); });
+            return *min_element(cbegin(group_offsets[i]), cend(group_offsets[i]), [this](const char& i, const char& j) { return cell_certainty(i, j); });
+        }
+
+        inline bool solve_groups()
+        {
+            return count_if(cbegin(group_offsets), cend(group_offsets), [this](const Group& g) { return solve_group(g); });
         }
 
         bool solve_group(const Group &g)
@@ -172,9 +195,10 @@ namespace Sudoku
             return changed;
         }
 
-        // The board is complete when all cells have a value.
-
-        inline bool is_complete() const { return all_of(cbegin(boards.top()), cend(boards.top()), [this](const Cell &c) { return cell_value(c); }); }
+        inline bool is_complete() const 
+        { 
+            return all_of(cbegin(boards.top()), cend(boards.top()), [this](const Cell &c) { return cell_value(c); }); 
+        }
 
         inline bool is_groups_correct() const
         {
@@ -191,7 +215,7 @@ namespace Sudoku
             return none_of(cbegin(counts) + 1, cend(counts), [] (const int& v) { return v > 1; });
         }
 
-        bool cell_certainty(const char &i, const char &j) const
+        inline bool cell_certainty(const char &i, const char &j) const
         {
             auto vi = __builtin_popcount(boards.top()[i] & value_mask);
             auto vj = __builtin_popcount(boards.top()[j] & value_mask);

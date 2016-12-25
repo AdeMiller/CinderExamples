@@ -20,10 +20,23 @@ namespace Sudoku
         return os;
     }
 
+    ostream& operator<<(ostream& os, const CoordStrm& i)
+    {
+        os << "[" << (i.v / 9 + 1) << ", " << (i.v % 9 + 1) << "]";
+        return os;
+    }
+
     ostream& operator<<(ostream& os, const Group& g)
     {
         os << "[ " << setw(2) << int(g[0]) << " .. " << setw(2) << int(g[8]) << " ]";
         return os;
+    }
+
+    ostream& operator<<(ostream& os, const Board& b)
+    {
+        for (auto c: b)
+            os << setw(1) << cell_value(c);
+        os << endl;
     }
 
     const array<Group, 27> SudokuSolver::group_offsets = array<Group, 27>({
