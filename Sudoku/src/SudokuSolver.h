@@ -56,21 +56,20 @@ namespace Sudoku
     public:
         SudokuSolver() : boards(), move_count(0) {}
 
-        inline Cell get_cell(const int row, const int col) const { return boards.top()[row * 9 + col]; }
+        inline Cell get_cell(const int row, const int col) const { return boards.empty() ? locked_mask : boards.top()[row * 9 + col]; }
 
         bool load_sdm(const string &data)
         {
             cout << "Loading =============================================================" << endl << data << endl;
             move_count = 0;
-            Board board;
-            boards = stack<Board>({ board });
 
             if (data.length() != 81) {
-                cout << "ERROR: Expected 81 characters but loaded " << data.length() << "." << endl;
-                fill(begin(boards.top()), end(boards.top()), (1 | locked_mask | bad_mask));
+                cout << "ERROR: Expected 81 characters but loaded " << data.length() << ". Try loading another board." << endl;
                 return false;    
             }
-    
+            
+            Board board;
+            boards = stack<Board>({ board });
             transform(cbegin(data), cend(data), begin(boards.top()), [this](const char c) {
                 auto v = atoi(&c);
                 return (v == 0) ? value_mask : (0b1 << (v - 1) | locked_mask);
@@ -79,11 +78,18 @@ namespace Sudoku
             return true;
         }
 
-        inline bool is_finished() const { return is_complete() && is_groups_correct(); }
+        inline bool is_finished() const { return !boards.empty() && is_complete() && is_groups_correct(); }
 
         bool solve()
         {
-            if (is_finished() || boards.empty()) {
+            // Check current state of puzzle.
+
+            if (boards.empty()) {
+                cout << "NO BOARD" << endl;
+                return false;
+            }
+
+            if (is_finished()) {
                 cout << "FINISHED !!" << endl;
                 return false;
             }
@@ -99,7 +105,7 @@ namespace Sudoku
                 " on board " << setw(2) << boards.size() <<
                 " =================================================" << endl;
 
-            // If groups are not correct then try another guess. If no guesses then this board is unsolvable.
+            // If board is not correct then try another guess. If no guesses then this board is unsolvable.
 
             if (!is_correct) {
                 cout << "BAD GUESS. Unrolling." << endl;
@@ -109,12 +115,9 @@ namespace Sudoku
 
             // Use the basic solver to remove possibilities based on existing values. If this results in
             // changes then consider the move over.
-
-            bool changed = solve_groups();
-
-            // If changed look for incorrect groups and mark their cells.
-
-            if (changed) {
+            // If this results in changes then look for incorrect groups and mark their cells.
+            
+            if (update_groups()) {
                 for (const auto &g: group_offsets)
                     if (!is_group_correct(g)) {
                         cout << "Group " << g << " incorrect" << endl;
@@ -124,18 +127,16 @@ namespace Sudoku
                 return true;
             }
 
-            if (!is_complete()) {
-                make_guesses();
-                return true;
-            }
+            // If the basic solver did not make any changes and the board is incomplete then try a guess.
 
-            cout << "VERY BAD GUESS. Unrolling." << endl;
-            boards.pop();
+            if (!is_complete())
+                make_guesses();
+
             return true;
         }
 
     private:
-        bool make_guesses()
+        void make_guesses()
         {
             auto i = find_guess_cell();
             auto current_board = boards.top();
@@ -166,14 +167,14 @@ namespace Sudoku
             return *min_element(cbegin(group_offsets[i]), cend(group_offsets[i]), [this](const char& i, const char& j) { return cell_certainty(i, j); });
         }
 
-        inline bool solve_groups()
+        inline bool update_groups()
         {
             return count_if(cbegin(group_offsets), cend(group_offsets), [this](const Group& g) { return solve_group(g); });
         }
 
         bool solve_group(const Group &g)
         {
-            // Count the number of occurences of each possibility set values within a group.
+            // Count the number of occurences of each set of possibilities within a group.
 
             unordered_map<unsigned short, int> values_counts(9);
             for (const auto i: g)
