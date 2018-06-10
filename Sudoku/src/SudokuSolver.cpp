@@ -1,4 +1,3 @@
-
 #include "SudokuSolver.h"
 
 namespace Sudoku
@@ -23,12 +22,6 @@ namespace Sudoku
     ostream& operator<<(ostream& os, const CoordStrm& i)
     {
         os << "[" << (i.v / 9 + 1) << ", " << (i.v % 9 + 1) << "]";
-        return os;
-    }
-
-    ostream& operator<<(ostream& os, const Group& g)
-    {
-        os << "[ " << setw(2) << int(g[0]) << " .. " << setw(2) << int(g[8]) << " ]";
         return os;
     }
 

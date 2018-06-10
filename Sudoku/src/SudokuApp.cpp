@@ -1,6 +1,7 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
+#include "cinder/Timer.h"
 
 #include "SudokuSolver.h"
 
@@ -24,13 +25,16 @@ public:
                  solver(),
                  puzzles(),
                  puzzle(0),
-                 is_dirty(false)
+                 is_dirty(false),
+                 run_mode(false),
+                 run_timer(true)
     {}
 
     void setup() override;
     void keyDown(KeyEvent event) override;
     void resize() override;
     void draw() override;
+    void update() override;
 
 private:
     const ivec2 board_offset;
@@ -46,8 +50,10 @@ private:
     vector<string> puzzles;
     int puzzle;
     bool is_dirty;
+    bool run_mode;
+    Timer run_timer;
 
-    void draw_board();
+    void draw_board() const;
     void draw_cell(const int row, const int col) const;
     void draw_value(const int row, const int col, const Cell &cell) const;
     void draw_values(const int row, const int col, const Cell &cell) const;
@@ -65,17 +71,23 @@ void SudokuApp::keyDown(KeyEvent event)
         case KeyEvent::KEY_SPACE:                                   // Next move.
             is_dirty = solver.solve() | solver.is_finished();
             break;
-        case KeyEvent::KEY_n:                                       // Next puzzle.
+        case KeyEvent::KEY_g:
+            run_mode = true;
+            break;
+        case KeyEvent::KEY_n:                                       // Next puzzle. If no more puzzles then quit.
             if (++puzzle >= puzzles.size())
                 quit();
-            else
+            else {
                 is_dirty = solver.load_sdm(puzzles[puzzle]);
+                run_mode = false;
+            }
             break;
         case KeyEvent::KEY_q:                                       // Quit.
             quit();
             break;
         case KeyEvent::KEY_r:                                       // Reset current puzzle.
             is_dirty = solver.load_sdm(puzzles[puzzle]);
+            run_mode = false;
             break;
     }
 }
@@ -112,6 +124,20 @@ void SudokuApp::setup()
     is_dirty = true;
 }
 
+void SudokuApp::update() 
+{
+    if (!run_mode)
+        return;
+
+    if (run_timer.getSeconds() < 0.1)
+        return;
+    run_timer = Timer(true);
+
+    is_dirty = solver.solve();
+    if (!is_dirty)
+        run_mode = false;
+}
+
 void SudokuApp::draw()
 {
     if (!is_dirty)
@@ -127,7 +153,7 @@ void SudokuApp::draw()
     is_dirty = false;
 }
 
-void SudokuApp::draw_board()
+void SudokuApp::draw_board() const
 {
     for (auto x = 0; x <= kGridSize; ++x) {
         gl::lineWidth(x % 3 == 0 ? 3.0f : 1.0f);
@@ -135,6 +161,7 @@ void SudokuApp::draw_board()
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
         gl::drawLine(board_offset + ivec2(0.0f, x * sqr_size), board_offset + ivec2(sqr_size * 9.0f, x * sqr_size));
     }
+    gl::drawString("Move: " + to_string(solver.moves()), board_offset + ivec2(0, -num_size), ColorA(1, 1, 1), sml_font);
 }
 
 void SudokuApp::draw_cell(const int row, const int col) const

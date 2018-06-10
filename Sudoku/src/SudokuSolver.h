@@ -17,7 +17,6 @@ using namespace ::std;
 
 namespace Sudoku
 {
-
     static const size_t kGridSize = 9;
     static const size_t kBoardSize = kGridSize * kGridSize;
     static const size_t kGroupCount = 27;
@@ -46,8 +45,6 @@ namespace Sudoku
     ostream& operator<<(ostream& os, const CellStrm& c);
 
     ostream& operator<<(ostream& os, const CoordStrm& i);
-
-    ostream& operator<<(ostream& os, const Group& g);
 
     ostream& operator<<(ostream& os, const Board& b);
     
@@ -85,6 +82,8 @@ namespace Sudoku
         }
 
         inline bool is_finished() const { return !boards.empty() && is_complete() && is_groups_correct(); }
+
+        inline int moves() const { return move_count; }
 
         bool solve()
         {
@@ -208,7 +207,7 @@ namespace Sudoku
             return changed;
         }
 
-        inline bool is_complete() const 
+        inline bool is_complete() const
         { 
             return all_of(cbegin(boards.top()), cend(boards.top()), [this](const Cell &c) { return cell_value(c); }); 
         }
