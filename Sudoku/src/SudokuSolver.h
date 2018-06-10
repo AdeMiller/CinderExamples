@@ -17,9 +17,14 @@ using namespace ::std;
 
 namespace Sudoku
 {
+
+    static const size_t kGridSize = 9;
+    static const size_t kBoardSize = kGridSize * kGridSize;
+    static const size_t kGroupCount = 27;
+
     typedef unsigned short Cell;
-    typedef array<Cell, 81> Board;
-    typedef array<char, 9> Group;
+    typedef array<Cell, kBoardSize> Board;
+    typedef array<char, kGridSize> Group;
 
     static const unsigned short value_mask =  0b0000000111111111;
     static const unsigned short locked_mask = 0b0000001000000000;
@@ -51,21 +56,22 @@ namespace Sudoku
     private:
         stack<Board> boards;
         int move_count;
-        static const array<Group, 27> group_offsets;
-
+        static const array<Group, kGroupCount> group_offsets;
+        static const array<string, kGroupCount> group_names;
+        
     public:
         SudokuSolver() : boards(), move_count(0) {}
 
-        inline Cell get_cell(const int row, const int col) const { return boards.empty() ? locked_mask : boards.top()[row * 9 + col]; }
+        inline Cell get_cell(const int row, const int col) const { return boards.empty() ? locked_mask : boards.top()[row * kGridSize + col]; }
 
         bool load_sdm(const string &data)
         {
-            cout << "Loading =============================================================" << endl << data << endl;
+            cout << "Loading =============================================================" << endl << "Raw:   " << data << endl;
             move_count = 0;
 
-            if (data.length() != 81) {
-                cout << "ERROR: Expected 81 characters but loaded " << data.length() << ". Try loading another board." << endl;
-                return false;    
+            if (data.length() != kBoardSize) {
+                cout << "ERROR: Expected " << kBoardSize << " characters but loaded " << data.length() << ". Try loading another board." << endl;
+                return false;
             }
             
             Board board;
@@ -74,7 +80,7 @@ namespace Sudoku
                 auto v = atoi(&c);
                 return (v == 0) ? value_mask : (0b1 << (v - 1) | locked_mask);
             });
-            cout << boards.top() << endl;
+            cout << "Board: " << boards.top() << endl;
             return true;
         }
 
@@ -118,12 +124,19 @@ namespace Sudoku
             // If this results in changes then look for incorrect groups and mark their cells.
             
             if (update_groups()) {
-                for (const auto &g: group_offsets)
-                    if (!is_group_correct(g)) {
-                        cout << "Group " << g << " incorrect" << endl;
-                        for (const auto i: g)
-                            boards.top()[i] |= bad_mask;
+                int i = 0;
+                for (const auto &g: group_offsets) {
+                    vector<char> incorrect_cells = is_group_correct(g);
+                    if (!incorrect_cells.empty()) {
+                        cout << "Group " << group_names[i] << " has incorrect cells: ";
+                        for (const auto i: incorrect_cells) {
+                            boards.top()[g[i]] |= bad_mask;
+                            cout << (int(i) + 1) << ", ";
+                        }
+                        cout << endl;
                     }
+                    i++;
+                }
                 return true;
             }
 
@@ -154,13 +167,13 @@ namespace Sudoku
         {
             // Get group with the lowest number of possible values.
 
-            array<int, 27> group_certainties;
+            array<int, kGroupCount> group_certainties;
             transform(cbegin(group_offsets), cend(group_offsets), begin(group_certainties), [this](const Group& g) {
                 int p = accumulate(cbegin(g), cend(g), 0, [this](int p, const char& i) { return p + __builtin_popcount(boards.top()[i] & value_mask); });
                 return  (p != 9) ? p : 82;
             });
             auto i = distance(cbegin(group_certainties), min_element(cbegin(group_certainties), cend(group_certainties), less<int>()));
-            cout << "Group " << group_offsets[i] << endl;
+            cout << "Making guesses for group " << group_names[i] << endl;
 
             // Find the cell with the lowest number of possible vales within the group.
 
@@ -176,9 +189,8 @@ namespace Sudoku
         {
             // Count the number of occurences of each set of possibilities within a group.
 
-            unordered_map<unsigned short, int> values_counts(9);
-            for (const auto i: g)
-                values_counts[boards.top()[i] & value_mask]++;
+            unordered_map<unsigned short, int> values_counts(kGridSize);
+            for_each(cbegin(g), cend(g), [&values_counts, this](const char i) { values_counts[boards.top()[i] & value_mask]++; });
 
             // If the number of occurences of a possibility set is the same as the set size then remove those
             // possible values from all other cells in the group.
@@ -203,17 +215,23 @@ namespace Sudoku
 
         inline bool is_groups_correct() const
         {
-            return all_of(cbegin(group_offsets), cend(group_offsets), [this](const Group &g) { return is_group_correct(g); });
+            return all_of(cbegin(group_offsets), cend(group_offsets), [this](const Group &g) { return is_group_correct(g).empty(); });
         }
 
-        bool is_group_correct(const Group &group) const
+        vector<char> is_group_correct(const Group &group) const
         {
             // A group is correct if all the cells that have a value are themselves unique.
+            // counts[0] holds a count of all the cells which are unresolved, so ignore it when checking.
 
-            array<int, 10> counts = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            for (const auto i: group)
-                counts[cell_value(boards.top()[i])]++;
-            return none_of(cbegin(counts) + 1, cend(counts), [] (const int& v) { return v > 1; });
+            array<vector<char>, 10> counts;
+            char i = 0;
+            for_each(cbegin(group), cend(group), [&counts, &i, this](const char o) { counts[cell_value(boards.top()[o])].push_back(i++); });
+            vector<char> incorrect_cells;
+            for_each(cbegin(counts) + 1, cend(counts), [&incorrect_cells, &i](const vector<char>& v) {
+                if (v.size() > 1)
+                    incorrect_cells.insert(end(incorrect_cells), begin(v), end(v));
+            });
+            return incorrect_cells;
         }
 
         inline bool cell_certainty(const char &i, const char &j) const

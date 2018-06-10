@@ -66,8 +66,10 @@ void SudokuApp::keyDown(KeyEvent event)
             is_dirty = solver.solve() | solver.is_finished();
             break;
         case KeyEvent::KEY_n:                                       // Next puzzle.
-            if (puzzle < puzzles.size())
-                is_dirty = solver.load_sdm(puzzles[++puzzle]);
+            if (++puzzle >= puzzles.size())
+                quit();
+            else
+                is_dirty = solver.load_sdm(puzzles[puzzle]);
             break;
         case KeyEvent::KEY_q:                                       // Quit.
             quit();
@@ -86,7 +88,7 @@ void SudokuApp::resize()
 
 void SudokuApp::setup()
 {
-    setWindowSize(board_offset.x * 2 + sqr_size * 9, board_offset.y * 2 + sqr_size * 9);
+    setWindowSize(board_offset.x * 2 + sqr_size * kGridSize, board_offset.y * 2 + sqr_size * kGridSize);
 
     gl::clear(ColorA::black());
 
@@ -118,8 +120,8 @@ void SudokuApp::draw()
     gl::clear(ColorA::black());
     draw_board();
 
-    for (auto r = 0; r < 9; ++r) {
-        for (auto c = 0; c < 9; ++c)
+    for (auto r = 0; r < kGridSize; ++r) {
+        for (auto c = 0; c < kGridSize; ++c)
             draw_cell(r, c);
     }
     is_dirty = false;
@@ -127,7 +129,7 @@ void SudokuApp::draw()
 
 void SudokuApp::draw_board()
 {
-    for (auto x = 0; x <= 9; ++x) {
+    for (auto x = 0; x <= kGridSize; ++x) {
         gl::lineWidth(x % 3 == 0 ? 3.0f : 1.0f);
         gl::color(ColorA::gray(x % 3 == 0 ? 1.0f : 0.5f));
         gl::drawLine(board_offset + ivec2(x * sqr_size, 0.0f), board_offset + ivec2(x * sqr_size, sqr_size * 9.0f));
@@ -156,6 +158,7 @@ void SudokuApp::draw_value(const int row, const int col, const Cell &cell) const
             break;
         case 0b0000100000000000:    // Cell is part of incorrect group - Red
         case 0b0000101000000000:
+        case 0b0000110000000000:
         case 0b0000111000000000:
             color = ColorA(1, 0, 0);
             break;
@@ -169,7 +172,7 @@ void SudokuApp::draw_value(const int row, const int col, const Cell &cell) const
 void SudokuApp::draw_values(const int row, const int col, const Cell& cell) const
 {
     auto offset = board_offset + ivec2(num_mid + sqr_size * col, num_mid + sqr_size * row);
-    for (auto i = 0; i < 9; ++i) {
+    for (auto i = 0; i < kGridSize; ++i) {
         if (cell & (0b1 << i))
             gl::drawStringCentered(to_string(i + 1),
                                    offset + ivec2(num_size * (i % 3), num_size * (i / 3)),
