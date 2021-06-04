@@ -1,5 +1,4 @@
-#ifndef SUDOKU_SUDOKUSOLVER_H
-#define SUDOKU_SUDOKUSOLVER_H
+#pragma once
 
 #include <algorithm>
 #include <array>
@@ -25,6 +24,7 @@ namespace Sudoku
     typedef array<Cell, kBoardSize> Board;
     typedef array<char, kGridSize> Group;
 
+    // Each cell is an unsigned short with 
     static const unsigned short value_mask =  0b0000000111111111;
     static const unsigned short locked_mask = 0b0000001000000000;
     static const unsigned short guess_mask =  0b0000010000000000;
@@ -53,6 +53,7 @@ namespace Sudoku
     private:
         stack<Board> boards;
         int move_count;
+        static const array<int, 10> certainty_map;
         static const array<Group, kGroupCount> group_offsets;
         static const array<string, kGroupCount> group_names;
         
@@ -72,12 +73,12 @@ namespace Sudoku
             }
             
             Board board;
-            boards = stack<Board>({ board });
-            transform(cbegin(data), cend(data), begin(boards.top()), [this](const char c) {
+            transform(cbegin(data), cend(data), begin(board), [this](const char c) {
                 auto v = atoi(&c);
                 return (v == 0) ? value_mask : (0b1 << (v - 1) | locked_mask);
             });
-            cout << "Board: " << boards.top() << endl;
+            cout << "Board: " << board << endl;
+            boards = stack<Board>({ board });
             return true;
         }
 
@@ -90,12 +91,12 @@ namespace Sudoku
             // Check current state of puzzle.
 
             if (boards.empty()) {
-                cout << "NO BOARD" << endl;
+                cout << "NO BOARD!" << endl;
                 return false;
             }
 
             if (is_finished()) {
-                cout << "FINISHED !!" << endl;
+                cout << "FINISHED!!" << endl;
                 return false;
             }
 
@@ -122,7 +123,7 @@ namespace Sudoku
             // changes then consider the move over.
             // If this results in changes then look for incorrect groups and mark their cells.
             
-            if (update_groups()) {
+            if (solve_groups()) {
                 int i = 0;
                 for (const auto &g: group_offsets) {
                     vector<char> incorrect_cells = is_group_correct(g);
@@ -130,7 +131,7 @@ namespace Sudoku
                         cout << "Group " << group_names[i] << " has incorrect cells: ";
                         for (const auto i: incorrect_cells) {
                             boards.top()[g[i]] |= bad_mask;
-                            cout << (int(i) + 1) << ", ";
+                            cout << (int(i) + 1) << " ";
                         }
                         cout << endl;
                     }
@@ -179,7 +180,7 @@ namespace Sudoku
             return *min_element(cbegin(group_offsets[i]), cend(group_offsets[i]), [this](const char& i, const char& j) { return cell_certainty(i, j); });
         }
 
-        inline bool update_groups()
+        inline bool solve_groups()
         {
             return count_if(cbegin(group_offsets), cend(group_offsets), [this](const Group& g) { return solve_group(g); });
         }
@@ -195,15 +196,17 @@ namespace Sudoku
             // possible values from all other cells in the group.
 
             bool changed = false;
-            for (const auto &c: values_counts)
-                if (__builtin_popcount(c.first) == c.second)
-                    for (const auto i: g)
-                        if (__builtin_popcount(boards.top()[i] & value_mask) != 1 && boards.top()[i] != c.first && boards.top()[i] & c.first) {
-                            cout << "[" << (i / 9 + 1) << ", " << (i % 9 + 1) << "]: " << CellStrm(boards.top()[i]);
-                            boards.top()[i] &= ~c.first;
-                            cout << " => " << CellStrm(boards.top()[i]) << endl;
-                            changed = true;
-                        }
+            for (const auto &c: values_counts) {
+                if (__builtin_popcount(c.first) != c.second)
+                    continue;
+                for (const auto i: g)
+                    if (__builtin_popcount(boards.top()[i] & value_mask) != 1 && boards.top()[i] != c.first && boards.top()[i] & c.first) {
+                        cout << CoordStrm(i) << ": " << CellStrm(boards.top()[i]);
+                        boards.top()[i] &= ~c.first;
+                        cout << " => " << CellStrm(boards.top()[i]) << endl;
+                        changed = true;
+                    }
+            }
             return changed;
         }
 
@@ -235,11 +238,9 @@ namespace Sudoku
 
         inline bool cell_certainty(const char &i, const char &j) const
         {
-            auto vi = __builtin_popcount(boards.top()[i] & value_mask);
-            auto vj = __builtin_popcount(boards.top()[j] & value_mask);
-            return (vi > 1 ? vi : 10) < (vj > 1 ? vj : 10);
+            return certainty_map[__builtin_popcount(boards.top()[i] & value_mask)] < certainty_map[__builtin_popcount(boards.top()[j] & value_mask)];
         }
     };
 };
 
-#endif //SUDOKU_SUDOKUSOLVER_H
+#endif

@@ -11,17 +11,17 @@ namespace Sudoku
             os << __builtin_ffs(v);
             return os;
         }
-        os << "[ ";
+        os << "{ ";
         for (auto m = 0b1; m < 512; m <<= 1)
             if (v & m)
-                os << __builtin_ffs(m) << ", ";
-        os << "]";
+                os << __builtin_ffs(m) << " ";
+        os << "}";
         return os;
     }
 
     ostream& operator<<(ostream& os, const CoordStrm& i)
     {
-        os << "[" << (i.v / 9 + 1) << ", " << (i.v % 9 + 1) << "]";
+        os << "r" << (i.v / kGridSize + 1) << "c" << (i.v % kGridSize + 1);
         return os;
     }
 
@@ -31,6 +31,8 @@ namespace Sudoku
             os << setw(1) << cell_value(c);
         os << endl;
     }
+
+    const array<int, 10> SudokuSolver::certainty_map = array<int, 10>({ 10, 10, 2, 3, 4, 5, 6, 7, 8, 9 });
 
     const array<Group, kGroupCount> SudokuSolver::group_offsets = array<Group, 27>({
 
