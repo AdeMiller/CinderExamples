@@ -13,7 +13,8 @@
             "intelliSenseMode": "gcc-x64",
             "compilerPath": "/usr/bin/c++",
             "cppStandard": "c++14",
-            "cStandard": "gnu17"
+            "cStandard": "gnu17",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
         }
     ],
     "version": 4
